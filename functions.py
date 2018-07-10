@@ -4,14 +4,17 @@ from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
-from sklearn.model_selection import train_test_split
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 ps.options.mode.chained_assignment = None  # default='warn' turns off warning messages
 
-
-def twitter_analyzer(path, column1, column2, has_neutral, neutral_name, embed_units, embed_dim, lstm_output, batch_size, random_state):
+# Main function of the API
+# Retuns score of loss function and accuracy of the model
+def twitter_analyzer(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output, batch_size, random_state,
+                     epochs):
     # load data and transform it so that only positive and negative sentiment values are left
-    data = read_data(path, column1, column2)
+    column1, column2 = get_column_names(data)
     data = transform_data(data, has_neutral, neutral_name, column1, column2)
 
     #print("Positive elements: %i" % data[data[column2] == 'positive'].size)
@@ -31,7 +34,7 @@ def twitter_analyzer(path, column1, column2, has_neutral, neutral_name, embed_un
     #print model.summary()
 
     # train the model
-    train_model(model, x_train, y_train, 5, batch_size, (x_test, y_test))
+    train_model(model, x_train, y_train, epochs, batch_size, (x_test, y_test))
 
     # evaluate the previous trained model
     score, acc = evaluate_model(model, x_test, y_test, batch_size)
@@ -41,35 +44,77 @@ def twitter_analyzer(path, column1, column2, has_neutral, neutral_name, embed_un
     return score, acc
 
 
-def tune_hyperparameters(path, column1, column2, has_neutral, neutral_name, embed_units, random_state):
-    score = 0.00
+# Method to tune the hyperparameters for the model
+# Hyperparameters tuned are dimension of embedding layer (embed_dim), output of LSTM layer (lstm_output)
+# Passed arguments are the dataset as DataFrame, the used epochs and batch_size
+# embed_dim is an array with possible values for embedding dimension and lstm_output is an array with possible values
+# returns values of best embed_dim, lstm_output and accuracy and scre of loss function
+def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
+    score = 1.00
     acc = 0.00
-    embed_dim = 128
-    tmp_embed_dim = embed_dim
-    lstm_output = 196
-    tmp_lstm_output = lstm_output
-    batch_size = 32
-    tmp_batch_size = batch_size
+    i = 0
+    j = 0
+    best_embed = 0
+    best_lstm = 0
+    # Take only a little amount of data for test purposes
+    data = load_small_data_set(data, 5000)
 
-    for i in range(0,5):
-        tmpscore, tmpacc = twitter_analyzer(path, column1, column2, has_neutral, neutral_name, embed_units, embed_dim, lstm_output,
-                         batch_size, random_state)
+    while i < len(embed_dim):
+        j= 0
+        while j < len(lstm_output):
+            tmpscore, tmpacc = twitter_analyzer(data, True, "neutral", 2000, embed_dim[i], lstm_output[j], batch_size, 42, epochs)
 
-        if(tmpscore < score and tmpacc >= acc):
-            acc = tmpacc
-            score = tmpscore
-            embed_dim = tmp_embed_dim
-            lstm_output = tmp_lstm_output
-            batch_size = tmp_batch_size
+            if(tmpscore < score and tmpacc >= acc):
+                score = tmpscore
+                acc = tmpacc
+                best_embed = embed_dim[i]
+                best_lstm = lstm_output[j]
 
-        tmp_embed_dim = tmp_embed_dim / 2
-        tmp_lstm_output = tmp_lstm_output / 2
-        tmp_batch_size = tmp_batch_size / 2
+            j = j + 1
+        i = i + 1
 
-    print (score, acc)
-    return embed_dim, lstm_output, batch_size
+    print (score,acc)
+    return best_embed, best_lstm, score, acc
 
-# Reads a csv file from a string path to the file and returns
+# Tunes the epoch and batch size for the model
+# Returns best epoch and batch size combination of given values
+def tune_parameters_epoch_batch(data, epochs, batch_sizes):
+    data = load_small_data_set(data, 5000)
+    i = 0
+    j = 0
+    score = 1.00
+    acc = 0.00
+    best_epoch = 0
+    best_batch = 0
+
+    while i < len(batch_sizes):
+        j = 0
+        while j < len(epochs):
+            tmpscore, tmpacc = twitter_analyzer(data, True, "neutral", 2000, 128, 196, batch_sizes[i], 42, epochs[j])
+
+            if(tmpscore < score and tmpacc >= acc):
+                score = tmpscore
+                acc = tmpacc
+                best_epoch = epochs[j]
+                best_batch = batch_sizes[i]
+
+            j = j + 1
+        i = i + 1
+
+    #print("Best: %f using %s" % acc, (best_epoch, best_batch))
+    return best_epoch, best_batch
+
+# Takes the DataFrame and returns the first n rows of it
+def load_small_data_set(data, n):
+    return data.head(n)
+
+
+# Gets the name of the text column and the sentiment column
+def get_column_names(data):
+    return data.dtypes.index[0], data.dtypes.index[1]
+
+
+# Reads a csv file from a string path to the file and returns pandas array
 def import_csv(path):
     return ps.read_csv(path)
 
@@ -175,9 +220,12 @@ def split_training_test_data(data, x, sentiment, test_size, random_state):
     return train_test_split(x, y, test_size=test_size, random_state=random_state)
 
 
+# Trains a model with given data, validation data and batch size and number of epochs
 def train_model(model, x, y, epochs, batch_size, validation_data):
     model.fit(x, y, epochs=epochs, batch_size=batch_size, verbose=2, validation_data=validation_data)
 
 
+# Evaluates a model with given data and batch size
+# Returns score of loss function and accuracy of predictions
 def evaluate_model(model, x, y, batch_size):
     return model.evaluate(x, y, verbose=2, batch_size=batch_size)
