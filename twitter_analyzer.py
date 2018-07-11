@@ -4,8 +4,7 @@ from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
-from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 
 ps.options.mode.chained_assignment = None  # default='warn' turns off warning messages
 
@@ -144,10 +143,11 @@ def read_data(path, column1, column2):
 # Then those data entries are no longer relevant
 # Returns the transformed data
 def transform_data(data, has_neutral, neutral_name, text, sentiment):
-    if has_neutral:
-        data = data[data[sentiment].values != neutral_name]
-
     data = data.dropna()
+
+    if has_neutral:
+        data = data.replace(neutral_name, ps.NaT).dropna()
+
     data[text].str.replace("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", True)
     tmpdata = data
     data[text] = tmpdata[text].str.lower()
