@@ -11,8 +11,8 @@ ps.options.mode.chained_assignment = None  # default='warn' turns off warning me
 
 # Main function of the API
 # Retuns score of loss function and accuracy of the model
-def twitter_analyzer(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output, batch_size, random_state,
-                     epochs):
+def analyze(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output, batch_size, random_state,
+            epochs):
     # load data and transform it so that only positive and negative sentiment values are left
     column1, column2 = get_column_names(data)
     data = transform_data(data, has_neutral, neutral_name, column1, column2)
@@ -30,7 +30,7 @@ def twitter_analyzer(data, has_neutral, neutral_name, embed_units, embed_dim, ls
     #print("Shape of x test, y test: %s,%s" % (x_test.shape, y_test.shape))
 
     # build the model with the given parameters
-    model = build_model(embed_units, embed_dim, x.shape[1], lstm_output)
+    model = build_model(embed_units, embed_dim, x.shape[1], lstm_output, y_train.shape[1])
     #print model.summary()
 
     # train the model
@@ -57,12 +57,15 @@ def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
     best_embed = 0
     best_lstm = 0
     # Take only a little amount of data for test purposes
-    data = load_small_data_set(data, 5000)
+    data = load_small_data_set(data)
+    total_iterations = len(embed_dim) * len(lstm_output)
+    count = 1
 
     while i < len(embed_dim):
         j= 0
         while j < len(lstm_output):
-            tmpscore, tmpacc = twitter_analyzer(data, True, "neutral", 2000, embed_dim[i], lstm_output[j], batch_size, 42, epochs)
+            print("%i  iteration of %i" % (count, total_iterations))
+            tmpscore, tmpacc = analyze(data, True, "neutral", 2000, embed_dim[i], lstm_output[j], batch_size, 42, epochs)
 
             if(tmpscore < score and tmpacc >= acc):
                 score = tmpscore
@@ -71,6 +74,8 @@ def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
                 best_lstm = lstm_output[j]
 
             j = j + 1
+            count = count + 1
+
         i = i + 1
 
     print (score,acc)
@@ -79,18 +84,21 @@ def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
 # Tunes the epoch and batch size for the model
 # Returns best epoch and batch size combination of given values
 def tune_parameters_epoch_batch(data, epochs, batch_sizes):
-    data = load_small_data_set(data, 5000)
+    data = load_small_data_set(data)
     i = 0
     j = 0
     score = 1.00
     acc = 0.00
     best_epoch = 0
     best_batch = 0
+    total_iterations = len(epochs) * len(batch_sizes)
+    count = 1
 
     while i < len(batch_sizes):
         j = 0
         while j < len(epochs):
-            tmpscore, tmpacc = twitter_analyzer(data, True, "neutral", 2000, 128, 196, batch_sizes[i], 42, epochs[j])
+            print("%i  iteration of %i" % (count, total_iterations))
+            tmpscore, tmpacc = analyze(data, True, "neutral", 2000, 128, 196, batch_sizes[i], 42, epochs[j])
 
             if(tmpscore < score and tmpacc >= acc):
                 score = tmpscore
@@ -99,13 +107,16 @@ def tune_parameters_epoch_batch(data, epochs, batch_sizes):
                 best_batch = batch_sizes[i]
 
             j = j + 1
+            count = count + 1
+
         i = i + 1
 
     #print("Best: %f using %s" % acc, (best_epoch, best_batch))
     return best_epoch, best_batch
 
 # Takes the DataFrame and returns the first n rows of it
-def load_small_data_set(data, n):
+def load_small_data_set(data):
+    n = data.shape[0]/ 10
     return data.head(n)
 
 
@@ -135,10 +146,11 @@ def read_data(path, column1, column2):
 def transform_data(data, has_neutral, neutral_name, text, sentiment):
     if has_neutral:
         data = data[data[sentiment].values != neutral_name]
+
+    data = data.dropna()
+    data[text].str.replace("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", True)
     tmpdata = data
-    data[text] = tmpdata[text].apply(lambda x: x.lower())
-    tmpdata2 = data
-    data[text] = tmpdata2[text].apply((lambda x: re.sub('[^a-zA-z0-9\s]', '', x)))
+    data[text] = tmpdata[text].str.lower()
 
     for idx, row in data.iterrows():
         row[0] = row[0].replace('rt', ' ')
@@ -163,12 +175,12 @@ def tokenize_data(data, max_features, text):
 # embed_dim is the dimension of Embedding layer.
 # in_length is the expected length of input in first layer.
 # lstm_out is the number of units of the output of LSTM layer in Network
-def build_model(max_features, embed_dim, in_length, lstm_out):
+def build_model(max_features, embed_dim, in_length, lstm_out, dense_in):
     model = Sequential()
     model = add_embedding_layer(model, max_features, embed_dim, input_length=in_length)
     model = add_sptialdropout_layer(model, 0.4)
     model = add_lstm_layer(model, lstm_out, 0.2, 0.2)
-    model = add_dense_layer(model, 2, 'softmax')
+    model = add_dense_layer(model, dense_in, 'softmax')
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
 
