@@ -1,0 +1,13 @@
+main(argv)
+
+Parameters:
+    - argv: list of command line arguments
+        -command line arguments:
+            "-h": Prints usage of main
+            "-d": Specifies the data set (airlines, product, apple)
+            "-t": Specifies if to tune the hyperparamters before sentiment analysis or if to use standard values (true, false)
+Usage:
+    main.py -d <data set> -t <tune parameters>
+    
+Example usage: main.py -d airlines -t true
+
