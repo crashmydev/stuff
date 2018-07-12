@@ -1,5 +1,4 @@
 import pandas as ps
-import re
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
@@ -61,8 +60,8 @@ def analyze(data, has_neutral, positive_name, neutral_name, negative_name, show_
 # Passed arguments are the dataset as DataFrame, the used epochs and batch_size
 # embed_dim is an array with possible values for embedding dimension and lstm_output is an array with possible values
 # returns values of best embed_dim, lstm_output and accuracy and score of loss function
-def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
-    score = 1.00
+def tune_hyperparameters(data, has_neutral, neutral_name, positive, negative, epochs, batch_size, embed_dim, lstm_output):
+    score = 10.00
     acc = 0.00
     i = 0
     j = 0
@@ -77,7 +76,7 @@ def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
         j= 0
         while j < len(lstm_output):
             print("%i  iteration of %i" % (count, total_iterations))
-            tmpscore, tmpacc = analyze(data, True, "neutral", 2000, embed_dim[i], lstm_output[j], batch_size, 42, epochs)
+            tmpscore, tmpacc = analyze(data, has_neutral, positive, neutral_name, negative, False, 2000, embed_dim[i], lstm_output[j], batch_size, 42, epochs)
 
             if(tmpscore < score and tmpacc >= acc):
                 score = tmpscore
@@ -95,11 +94,11 @@ def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
 
 # Tunes the epoch and batch size for the model
 # Returns best epoch and batch size combination of given values
-def tune_parameters_epoch_batch(data, epochs, batch_sizes):
+def tune_parameters_epoch_batch(data,has_neutral, neutral_name, positive, negative, epochs, batch_sizes):
     data = load_small_data_set(data)
     i = 0
     j = 0
-    score = 1.00
+    score = 10.00
     acc = 0.00
     best_epoch = 0
     best_batch = 0
@@ -110,7 +109,7 @@ def tune_parameters_epoch_batch(data, epochs, batch_sizes):
         j = 0
         while j < len(epochs):
             print("%i  iteration of %i" % (count, total_iterations))
-            tmpscore, tmpacc = analyze(data, True, "neutral", 2000, 128, 196, batch_sizes[i], 42, epochs[j])
+            tmpscore, tmpacc = analyze(data, has_neutral, positive, neutral_name, negative, False, 2000, 128, 196, batch_sizes[i], 42, epochs[j])
 
             if(tmpscore < score and tmpacc >= acc):
                 score = tmpscore

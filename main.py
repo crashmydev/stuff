@@ -6,6 +6,11 @@ def main(argv):
     dataset = None
     tune_params = ""
     data = None
+    positive = None
+    negative = None
+    has_neutral = None
+    neutral = None
+
     try:
         opts, args = getopt.getopt(argv, "hd:t:", ["dataset=", "tune-paras="])
     except getopt.GetoptError:
@@ -23,12 +28,24 @@ def main(argv):
 
     if dataset == "airlines":
         # Airline data
+        positive = "positive"
+        negative = "negative"
+        has_neutral = True
+        neutral = "neutral"
         data = twitter_analyzer.read_data('./Airline.csv', 'text', 'airline_sentiment')
     elif dataset == 'apple':
         # Apple data
+        positive = "5"
+        negative = "1"
+        has_neutral = True
+        neutral = "3"
         data = twitter_analyzer.read_data('./train.csv', 'text', 'sentiment')
     elif dataset == 'product':
         # product/company data
+        positive = "Positive emotion"
+        negative = "Negative emotion"
+        has_neutral = True
+        neutral = "No emotion toward brand or product"
         data = twitter_analyzer.read_data('./tweet_product_company.csv', 'tweet_text', 'is_there_an_emotion_directed_at_a_brand_or_product')
 
     if tune_params == "true":
@@ -37,10 +54,10 @@ def main(argv):
         embed_dims = [64, 128, 256]
         lstm_outputs = [98, 196, 294]
 
-        epoch, batch = twitter_analyzer.tune_parameters_epoch_batch(data, epochs, batch_sizes)
+        epoch, batch = twitter_analyzer.tune_parameters_epoch_batch(data, has_neutral, neutral, positive, negative, epochs, batch_sizes)
         print "best epoch is %i and best batch size is %i" % (epoch, batch)
 
-        embed_dim, lstm_output, score, acc = twitter_analyzer.tune_hyperparameters(data, epoch, batch, embed_dims,
+        embed_dim, lstm_output, score, acc = twitter_analyzer.tune_hyperparameters(data, has_neutral, neutral, positive, negative, epoch, batch, embed_dims,
                                                                                    lstm_outputs)
         print "best embed_dim is %i and best lstm_ouput is %i" % (embed_dim, lstm_output)
 
@@ -53,7 +70,7 @@ def main(argv):
                                      embed_dim, lstm_output, batch, 0, epoch)
         elif dataset == 'apple':
             # Apple data
-            twitter_analyzer.analyze(data, True, 5, "3", 1, False, 2000,
+            twitter_analyzer.analyze(data, True, 5, "3", 1, True, 2000,
                                      embed_dim, lstm_output, batch, 0, epoch)
         elif dataset == 'product':
             # product/company data
@@ -66,7 +83,7 @@ def main(argv):
             twitter_analyzer.analyze(data, True, "positive", "neutral", "negative", True, 2000, 128, 196, 32, 0, 7)
         elif dataset == 'apple':
             # Apple data
-            twitter_analyzer.analyze(data, True, 5, "3", 1, 2000, 128, 196, 32, 0, 7)
+            twitter_analyzer.analyze(data, True, 5, "3", 1, True, 2000, 128, 196, 32, 0, 7)
         elif dataset == 'product':
             # product/company data
             twitter_analyzer.analyze(data, True, "Positive emotion", "No emotion toward brand or product", "Negative emotion", True, 2000, 128, 196, 32, 0, 7)
