@@ -39,7 +39,7 @@ def main(argv):
         negative = "1"
         has_neutral = True
         neutral = "3"
-        data = twitter_analyzer.read_data('./train.csv', 'text', 'sentiment')
+        data = twitter_analyzer.read_data('./apple.csv', 'text', 'sentiment')
     elif dataset == 'product':
         # product/company data
         positive = "Positive emotion"
@@ -80,10 +80,10 @@ def main(argv):
     else:
         if dataset == "airlines":
             # Airline analyzer call
-            twitter_analyzer.analyze(data, True, "positive", "neutral", "negative", True, 2000, 128, 196, 32, 0, 7)
+            twitter_analyzer.analyze(data, True, "positive", "neutral", "negative", True, 2000, 64, 98, 128, 0, 10)
         elif dataset == 'apple':
             # Apple data
-            twitter_analyzer.analyze(data, True, 5, "3", 1, True, 2000, 128, 196, 32, 0, 7)
+            twitter_analyzer.analyze(data, True, 5, "3", 1, True, 2000, 128, 294, 32, 0, 15)
         elif dataset == 'product':
             # product/company data
             twitter_analyzer.analyze(data, True, "Positive emotion", "No emotion toward brand or product", "Negative emotion", True, 2000, 128, 196, 32, 0, 7)

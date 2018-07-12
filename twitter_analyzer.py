@@ -21,12 +21,9 @@ def analyze(data, has_neutral, positive_name, neutral_name, negative_name, show_
     column1, column2 = get_column_names(data)
 
     # draw wordcloud for given dataset
-    show_wordcloud(data, show_visualizations, sentiment_column_name=column2, text_column_name=column1, negative_sentiment=negative_name, positive_sentiment=positive_name)
+    #show_wordcloud(data, show_visualizations, sentiment_column_name=column2, text_column_name=column1, negative_sentiment=negative_name, positive_sentiment=positive_name)
 
     data = transform_data(data, has_neutral, neutral_name, column1, column2)
-
-    #print("Positive elements: %i" % data[data[column2] == 1].size)
-    #print("Negative elements: %i" % data[data[column2] == 'negative'].size)
 
     # tokenize the data so that the neural network can use the data
     x = tokenize_data(data, 2000, column1)
@@ -34,12 +31,8 @@ def analyze(data, has_neutral, positive_name, neutral_name, negative_name, show_
     # split the data into 33% test data and rest for training
     x_train, x_test, y_train, y_test = split_training_test_data(data, x, column2, 0.33, random_state)
 
-    print("Shape of x training, y training: %s,%s" % (x_train.shape, y_train.shape))
-    #print("Shape of x test, y test: %s,%s" % (x_test.shape, y_test.shape))
-
     # build the model with the given parameters
     model = build_model(embed_units, embed_dim, x.shape[1], lstm_output, y_train.shape[1])
-    #print model.summary()
 
     # train the model
     history = train_model(model, x_train, y_train, epochs, batch_size, (x_test, y_test))
@@ -122,7 +115,6 @@ def tune_parameters_epoch_batch(data,has_neutral, neutral_name, positive, negati
 
         i = i + 1
 
-    #print("Best: %f using %s" % acc, (best_epoch, best_batch))
     return best_epoch, best_batch
 
 # Takes the DataFrame and returns the first n rows of it
