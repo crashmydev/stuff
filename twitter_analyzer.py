@@ -6,17 +6,27 @@ from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
 from sklearn.model_selection import train_test_split
 
+import keras
+from wordcloud import WordCloud, STOPWORDS
+from nltk.corpus import stopwords
+
+import matplotlib.pyplot as plot
+
 ps.options.mode.chained_assignment = None  # default='warn' turns off warning messages
 
 # Main function of the API
 # Retuns score of loss function and accuracy of the model
-def analyze(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output, batch_size, random_state,
+def analyze(data, has_neutral, positive_name, neutral_name, negative_name, show_visualizations, embed_units, embed_dim, lstm_output, batch_size, random_state,
             epochs):
     # load data and transform it so that only positive and negative sentiment values are left
     column1, column2 = get_column_names(data)
+
+    # draw wordcloud for given dataset
+    show_wordcloud(data, show_visualizations, sentiment_column_name=column2, text_column_name=column1, negative_sentiment=negative_name, positive_sentiment=positive_name)
+
     data = transform_data(data, has_neutral, neutral_name, column1, column2)
 
-    #print("Positive elements: %i" % data[data[column2] == 'positive'].size)
+    #print("Positive elements: %i" % data[data[column2] == 1].size)
     #print("Negative elements: %i" % data[data[column2] == 'negative'].size)
 
     # tokenize the data so that the neural network can use the data
@@ -25,7 +35,7 @@ def analyze(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output
     # split the data into 33% test data and rest for training
     x_train, x_test, y_train, y_test = split_training_test_data(data, x, column2, 0.33, random_state)
 
-    #print("Shape of x training, y training: %s,%s" % (x_train.shape, y_train.shape))
+    print("Shape of x training, y training: %s,%s" % (x_train.shape, y_train.shape))
     #print("Shape of x test, y test: %s,%s" % (x_test.shape, y_test.shape))
 
     # build the model with the given parameters
@@ -33,7 +43,10 @@ def analyze(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output
     #print model.summary()
 
     # train the model
-    train_model(model, x_train, y_train, epochs, batch_size, (x_test, y_test))
+    history = train_model(model, x_train, y_train, epochs, batch_size, (x_test, y_test))
+
+    # visualize training history
+    show_training_history(history, show_visualizations)
 
     # evaluate the previous trained model
     score, acc = evaluate_model(model, x_test, y_test, batch_size)
@@ -47,7 +60,7 @@ def analyze(data, has_neutral, neutral_name, embed_units, embed_dim, lstm_output
 # Hyperparameters tuned are dimension of embedding layer (embed_dim), output of LSTM layer (lstm_output)
 # Passed arguments are the dataset as DataFrame, the used epochs and batch_size
 # embed_dim is an array with possible values for embedding dimension and lstm_output is an array with possible values
-# returns values of best embed_dim, lstm_output and accuracy and scre of loss function
+# returns values of best embed_dim, lstm_output and accuracy and score of loss function
 def tune_hyperparameters(data, epochs, batch_size, embed_dim, lstm_output):
     score = 1.00
     acc = 0.00
@@ -161,6 +174,7 @@ def transform_data(data, has_neutral, neutral_name, text, sentiment):
 # Gets the data set in form of numpy array and tokenizes the data, so that Neural Network can work with the data.
 # Transforms the text data to vectors
 # Tokenizer used is from keras module
+# max_features: size of the vocabulary
 # Returns the tokenized data set
 def tokenize_data(data, max_features, text):
     tokenizer = Tokenizer(num_words=max_features, split=' ')
@@ -171,7 +185,7 @@ def tokenize_data(data, max_features, text):
 
 
 # Builds the Neural Network model.
-# Max_features is number of units in Embedding layer.
+# Max_features is the size of the vocabulary
 # embed_dim is the dimension of Embedding layer.
 # in_length is the expected length of input in first layer.
 # lstm_out is the number of units of the output of LSTM layer in Network
@@ -234,10 +248,76 @@ def split_training_test_data(data, x, sentiment, test_size, random_state):
 
 # Trains a model with given data, validation data and batch size and number of epochs
 def train_model(model, x, y, epochs, batch_size, validation_data):
-    model.fit(x, y, epochs=epochs, batch_size=batch_size, verbose=2, validation_data=validation_data)
+    return model.fit(x, y, epochs=epochs, batch_size=batch_size, verbose=2, validation_data=validation_data)
 
 
 # Evaluates a model with given data and batch size
 # Returns score of loss function and accuracy of predictions
 def evaluate_model(model, x, y, batch_size):
     return model.evaluate(x, y, verbose=2, batch_size=batch_size)
+
+def show_wordcloud(data, show_visualizations, sentiment_column_name, text_column_name, negative_sentiment, positive_sentiment):
+    # TODO: put into different function
+
+    if show_visualizations:
+        print data.columns.get_values()
+
+        data_positive_sent = data[data[sentiment_column_name] == positive_sentiment]
+        data_positive_sent = data_positive_sent[text_column_name]
+
+        positive_words = ' '.join(data_positive_sent)
+        cleaned_word = ' '.join([word for word in positive_words.split()
+                                 if 'http' not in word
+                                 and not word.startswith('@')
+                                 and not word.startswith('#')
+                                 and word != 'RT'
+                                 ])
+        wordcloud = WordCloud(stopwords=STOPWORDS, background_color="white", width=2500, height=2000).generate(
+            cleaned_word)
+        plot.title('Positive sentiment')
+        plot.figure(1, figsize=(13, 13))
+        plot.imshow(wordcloud)
+        plot.axis('off')
+        plot.show()
+
+        data_negative_sent = data[data[sentiment_column_name] == negative_sentiment]
+        data_negative_sent = data_negative_sent[text_column_name]
+
+        negative_words = ' '.join(data_negative_sent)
+        cleaned_word = ' '.join([word for word in negative_words.split()
+                                 if 'http' not in word
+                                 and not word.startswith('@')
+                                 and not word.startswith('#')
+                                 and word != 'RT'
+                                 ])
+        wordcloud = WordCloud(stopwords=STOPWORDS, background_color="white", width=2500, height=2000).generate(
+            cleaned_word)
+        plot.title('Negative sentiment')
+        plot.figure(1, figsize=(13, 13))
+        plot.imshow(wordcloud)
+        plot.axis('off')
+        plot.show()
+
+
+
+def show_training_history(history, show_visualizations):
+
+    if show_visualizations:
+        # plot accuracy
+        plot.plot(history.history['acc'])
+        plot.plot(history.history['val_acc'])
+        plot.title('model accuracy')
+        plot.ylabel('accuracy')
+        plot.xlabel('epoch')
+        plot.legend(['train', 'test'], loc='upper left')
+        plot.show()
+
+        # plot loss
+        plot.plot(history.history['loss'])
+        plot.plot(history.history['val_loss'])
+        plot.title('model loss')
+        plot.ylabel('loss')
+        plot.xlabel('epoch')
+        plot.legend(['train', 'test'], loc='upper left')
+        plot.show()
+

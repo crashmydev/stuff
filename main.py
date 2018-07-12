@@ -49,27 +49,27 @@ def main(argv):
 
         if dataset == "airlines":
             # Airline analyzer call
-            twitter_analyzer.analyze(data, True, "neutral", 2000,
+            twitter_analyzer.analyze(data, True, "positive", "neutral", "negative", True, 2000,
                                      embed_dim, lstm_output, batch, 0, epoch)
         elif dataset == 'apple':
             # Apple data
-            twitter_analyzer.analyze(data, True, "3", 2000,
+            twitter_analyzer.analyze(data, True, 5, "3", 1, False, 2000,
                                      embed_dim, lstm_output, batch, 0, epoch)
         elif dataset == 'product':
             # product/company data
-            twitter_analyzer.analyze(data, True, "No emotion toward brand or product", 2000,
+            twitter_analyzer.analyze(data, True,"Positive emotion", "No emotion toward brand or product", "Negative emotion", True, 2000,
                                      embed_dim, lstm_output, batch, 0, epoch)
 
     else:
         if dataset == "airlines":
             # Airline analyzer call
-            twitter_analyzer.analyze(data, True, "neutral", 2000, 128, 196, 32, 0, 7)
+            twitter_analyzer.analyze(data, True, "positive", "neutral", "negative", True, 2000, 128, 196, 32, 0, 7)
         elif dataset == 'apple':
             # Apple data
-            twitter_analyzer.analyze(data, True, "3", 2000, 128, 196, 32, 0, 7)
+            twitter_analyzer.analyze(data, True, 5, "3", 1, 2000, 128, 196, 32, 0, 7)
         elif dataset == 'product':
             # product/company data
-            twitter_analyzer.analyze(data, True, "No emotion toward brand or product", 2000, 128, 196, 32, 0, 7)
+            twitter_analyzer.analyze(data, True, "Positive emotion", "No emotion toward brand or product", "Negative emotion", True, 2000, 128, 196, 32, 0, 7)
 
 
 if __name__ == "__main__":
